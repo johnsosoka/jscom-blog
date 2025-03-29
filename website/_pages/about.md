@@ -30,6 +30,9 @@ I have been on GitHub for a while under a pseudonym, but have recently created a
 Friendly requests/comments/corrections are always welcome, feel free to contact me via the [contact form](/contact/). 
 Be sure to leave a valid e-mail so that I can follow up with you.
 
+In case you need to send a supersecret message, my PGP key is available [here](/pgp/). Be sure to include your public key
+if you would like me to respond securely.
+
 #### Website:
 
 This website is intended to serve as a base of operations for me. I enjoy running this website as somebody might enjoy 
