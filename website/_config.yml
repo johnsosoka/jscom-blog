@@ -64,3 +64,12 @@ plugins:
 contact:
   api:
     url: https://api.johnsosoka.com/v1/contact
+
+# Newsletter Settings
+newsletter:
+  api:
+    url: https://api.johnsosoka.com/v1/newsletter
+  footer:
+    enabled: false
+    title: "Newsletter"
+    description: "Get random updates...maybe"
