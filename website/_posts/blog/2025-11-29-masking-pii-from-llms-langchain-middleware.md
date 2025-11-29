@@ -141,9 +141,9 @@ The code which masks the fields (if identified) also registers the original sens
         return response
 ```
 
-Again, the complete middleware code along with the PII Registry are available on [GitHub](https://github.com/johnsosoka/code-examples/tree/main/python/langchain-inference-masking) I'm unsing truncated examples for brevity in this post. 
+_Again, the complete middleware code along with the PII Registry are available on [GitHub](https://github.com/johnsosoka/code-examples/tree/main/python/langchain-inference-masking) I'm using truncated examples for brevity in this post_
 
-From these snippets, you can see how we plug attach custom code to modify requests right at inference time. The middleware pattern is timeless!
+From the above snippets, you should now see how we can attach custom code via `AgentMiddleware` to modify requests right at inference time. The middleware pattern is timeless!
 
 ### Testing & Observability
 
@@ -192,16 +192,19 @@ def run_simple_demo():
     logger.info(f"\nPII Registry: {middleware._mask_registry}")
 ```
 
-You can see in the above we prepare the test situation, and pass a user message that includes a phone number (which will trigger our Middleware). Also note that we equip the custom middlewhere when we construct the agent Graph via:
+You can see in the above we prepare the test situation, and pass a user message that includes a phone number (which will trigger our Middleware). Also note that we equip the custom middleware when we construct the agent Graph via:
 
 ```python
 
+	middleware = PiiMaskingMiddleware()  
+	...
     agent = create_agent(  
         model=model,  
         tools=[],  # No tools needed for this demo  
         middleware=[middleware],  
         system_prompt=system_prompt,  
-    )  ```
+    )
+```
 
 #### Validating Test #1 (LangSmith Observability)
 
@@ -229,7 +232,7 @@ There it is! This specific node in the trace is when OpenAI is invoked. Look car
 
 `[PHONE:59c0b4a6]` 
 
-We can see the middleware working! The request that actually fired across the wire to our 3rd party LLM Provider (OpenAI) had all sensitive information substituted for a unique ID prior to inference & then returned post-inference.
+We can see the middleware working! The request that actually fired over the wire to our 3rd party LLM Provider (OpenAI) had all sensitive information substituted for a unique ID prior to inference & then returned post-inference.
 
 #### Validating Test #2
 
