@@ -6,16 +6,14 @@ category: blog
 tags: LLM LangChain PII privacy security middleware python data-masking
 ---
 
-## Introduction
+## Introduction & Problem
 
-LLM's are working their way into more and more business processes either as agents with scoped autonomy or as part of larger, more deterministic workflows and pipelines. With many of the best performing LLM providers being only remotely available, more scenarios are arising where we need to limit the information the LLM has access to. Compliance, vendor risk, data exposure are all factors.
+LLMs are working their way into more and more business processes either as agents with scoped autonomy or as part of larger, more deterministic workflows and pipelines. With many of the best performing LLM providers being only remotely available, more scenarios are arising where LLMs may be dealing with data that should never be sent to a 3rd party LLM provider. 
 
-## The Problem
-
-Part of the real power for LLMs is in processing unstructured data (like a conversation or a research  paper) and acting on that information by invoking other systems via function calls or tools. 
+Part of the real power with LLMs is in ingesting unstructured data (like a conversation or a research paper) and acting upon that information by querying or invoking other systems via function calls or tools. In the case of dealing with confidential user information or proprietary data, this means that we often encounter scenarios where the very thing LLMs excel at working with, we cannot let them see.
 
 *How can we reliably get an LLM to act on and interact with information that we've chosen not to expose to it?*
-### LangChain Middleware
+### Enter LangChain Middleware
 
 As part of the much anticipated 1.0 release, LangChain added [agent middleware](https://blog.langchain.com/agent-middleware/) which provides hooks into the framework which fire:
 * `before_model` - Executes implemented method prior to inference
@@ -25,7 +23,7 @@ As part of the much anticipated 1.0 release, LangChain added [agent middleware](
 ## The Solution
 
 The solution to our problem is to implement our own custom middleware and leverage the `modify_model_request` method. When our middleware is attached, we will have access to the inference request _prior_ to being sent to a remote LLM provider. This level of access gives us the ability to:
-1. Identify sensitive data (In our code example phone numbers, ssn, e-mail)
+1. Identify sensitive data (In our code example phone numbers, SSN, email)
 2. Generate an ID & map it to the PII in a singleton (for access throughout the application in other services)
 3. Modify the LLM request & replace the PII with the ID (Masking sensitive data from a 3rd party)
 4. Post Inference return the PII in place of the generated ID and reply to the user.
@@ -39,7 +37,9 @@ The complete code for this example is available in my [code-examples](https://gi
 
 ### Building the Middleware
 
-LangChain provides an `AgentMiddleware` base class which defines the middleware methods to be invoked around model inference. We're planning to implement `pii_masking` middleware that will leverage the [pii registry](https://github.com/johnsosoka/code-examples/blob/main/python/langchain-inference-masking/src/services/pii_registry.py) which is a singleston key/value store accessible throughout the application. The purpose of the registry is to exchange PII for a unique ID and vice-versa.
+LangChain provides an `AgentMiddleware` base class which defines the middleware methods to be invoked around model inference. We're planning to implement `pii_masking` middleware that will leverage the [pii registry](https://github.com/johnsosoka/code-examples/blob/main/python/langchain-inference-masking/src/services/pii_registry.py) which is a singleton key/value store accessible throughout the application. The purpose of the registry is to exchange PII for a unique ID and vice-versa.
+
+**Note:** _for demo simplicity, this uses an in-memory singleton registry. In production you'd want a request-scoped or externalized mapping to ensure thread/process safety._
 
 To start, our class is implementing `AgentMiddleware` you can view the complete [custom middleware class here](https://github.com/johnsosoka/code-examples/blob/main/python/langchain-inference-masking/src/middleware/pii_masking.py) . 
 
@@ -70,7 +70,7 @@ class PiiMaskingMiddleware(AgentMiddleware):
     """
 ```
 
-The next interesting piece in our middleware class is where we implement `wrap_model_call`. In this method our logic iterates through every message in the original request, building a new list of message that have masked PII information:
+The next interesting piece in our middleware class is where we implement `wrap_model_call`. In this method our logic iterates through every message in the original request, building a new list of messages that have masked PII information:
 
 ```python
     def wrap_model_call(
@@ -94,7 +94,7 @@ The next interesting piece in our middleware class is where we implement `wrap_m
         # Mask PII in all messages before sending to LLM
         masked_messages: list[AnyMessage] = []
         for msg in request.messages:
-            masked_messages.append(self._mask_message(msg))  # type: ignore
+            masked_messages.append(self._mask_message(msg))
 
         pii_count = len(self._registry.registry)
         if pii_count > 0:
@@ -143,7 +143,7 @@ The code which masks the fields (if identified) also registers the original sens
 
 _Again, the complete middleware code along with the PII Registry are available on [GitHub](https://github.com/johnsosoka/code-examples/tree/main/python/langchain-inference-masking) I'm using truncated examples for brevity in this post_
 
-From the above snippets, you should now see how we can attach custom code via `AgentMiddleware` to modify requests right at inference time. The middleware pattern is timeless!
+From the above snippets, you should now see how we can attach custom code via `AgentMiddleware` to modify requests right before inference time. The middleware pattern is tremendously useful.
 
 ### Testing & Observability
 
@@ -192,13 +192,13 @@ def run_simple_demo():
     logger.info(f"\nPII Registry: {middleware._mask_registry}")
 ```
 
-You can see in the above we prepare the test situation, and pass a user message that includes a phone number (which will trigger our Middleware). Also note that we equip the custom middleware when we construct the agent Graph via:
+You can see in the above we prepare the test situation, and pass a user message that includes a phone number (which will trigger our Middleware). Also note that we equip the custom middleware when we construct the agent graph via:
 
 ```python
 
 	middleware = PiiMaskingMiddleware()  
 	...
-    agent = create_agent(  
+    agent = create_agent(
         model=model,  
         tools=[],  # No tools needed for this demo  
         middleware=[middleware],  
@@ -232,7 +232,7 @@ There it is! This specific node in the trace is when OpenAI is invoked. Look car
 
 `[PHONE:59c0b4a6]` 
 
-We can see the middleware working! The request that actually fired over the wire to our 3rd party LLM Provider (OpenAI) had all sensitive information substituted for a unique ID prior to inference & then returned post-inference.
+We can see the middleware working! The request that was actually sent over the wire to our 3rd party LLM Provider (OpenAI) had all sensitive information substituted for a unique ID prior to inference & then returned post-inference.
 
 #### Validating Test #2
 
@@ -252,6 +252,8 @@ When we view the inputs/outputs _actually sent_ to OpenAI, the phone number util
 
 ## Conclusion
 
-Some patterns are simply timeless. The middleware pattern in LangSmith has SO MANY applications far beyond masking data from 3rd party LLM providers. It could be leveraged for human in the loop, dynamic pre-inference context injection, even calling additional models pre/post target model hook for additional extraction, monitoring, or insights.
+Some patterns are simply timeless! The middleware pattern in LangChain has SO MANY applications, far beyond masking sensitive data from 3rd party LLM providers. It could be leveraged for human in the loop, blocking pre-inference requests until a human-issued command releases a lock. Middleware could be leveraged to enrich agent context by adding to the messages array, or even to load a "side-car" LLM instance tasked with evaluating human input for malicious prompts prior to forwarding the request to the target model within the LLM Workflow. 
+
+Hopefully awareness of the new `AgentMiddleware` capability and some of the hands on examples in the blogpost will prove useful in your future projects.
 
 Happy coding!
