@@ -1,3 +1,6 @@
+# I've been experimenting with Obsidian as a blog editor...
+website/.obsidian/
+
 # terraform lock file...not tracking for now..
 *lock.hcl
 
