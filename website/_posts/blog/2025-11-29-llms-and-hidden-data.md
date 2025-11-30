@@ -1,32 +1,26 @@
 ---
 layout: post
-title: Masking PII at Inference Time with LangChain Middleware
+title: Getting LLMs to Use Data You Don’t Let Them See
 subtitle: Using LangChain Middleware to Modify Inference REquests
 category: blog
-tags: LLM LangChain PII privacy security middleware python data-masking
+tags: LangChain Agent-Middleware data-masking privacy security python data-masking llm openai AgentMiddleware Custom Middleware
 ---
+> How can we reliably get an LLM to act on and interact with information that we've chosen not to expose to it?
 
 ## Introduction & Problem
 
-LLMs are working their way into more and more business processes either as agents with scoped autonomy or as part of larger, more deterministic workflows and pipelines. With many of the best performing LLM providers being only remotely available, more scenarios are arising where LLMs may be dealing with data that should never be sent to a 3rd party LLM provider. 
+LLMs are working their way into more and more business processes either as agents with scoped autonomy or as part of larger, more deterministic workflows and pipelines. These new LLM-powered agents and workflows are remarkably good at ingesting and acting upon unstructured data--but sometimes that unstructured data contains information we do not want to send to a 3rd party LLM provider, no matter how much they assure us our data is safe. 
 
-Part of the real power with LLMs is in ingesting unstructured data (like a conversation or a research paper) and acting upon that information by querying or invoking other systems via function calls or tools. In the case of dealing with confidential user information or proprietary data, this means that we often encounter scenarios where the very thing LLMs excel at working with, we cannot let them see.
-
-*How can we reliably get an LLM to act on and interact with information that we've chosen not to expose to it?*
-### Enter LangChain Middleware
-
-As part of the much anticipated 1.0 release, LangChain added [agent middleware](https://blog.langchain.com/agent-middleware/) which provides hooks into the framework which fire:
-* `before_model` - Executes implemented method prior to inference
-* `after_model` - Executes implemented method after inference
-* `modify_model_request` - Modifies the pending inference request.
+This creates a paradox: the kind of data LLMs excel at working with often contains the same data we can’t let them see.
 
 ## The Solution
 
-The solution to our problem is to implement our own custom middleware and leverage the `modify_model_request` method. When our middleware is attached, we will have access to the inference request _prior_ to being sent to a remote LLM provider. This level of access gives us the ability to:
-1. Identify sensitive data (In our code example phone numbers, SSN, email)
-2. Generate an ID & map it to the PII in a singleton (for access throughout the application in other services)
-3. Modify the LLM request & replace the PII with the ID (Masking sensitive data from a 3rd party)
-4. Post Inference return the PII in place of the generated ID and reply to the user.
+To solve todays problem, we will implement our own custom agent middleware and leverage the `wrap_model_call` method defined by the base class. When our middleware is attached, we will have access to the inference request _prior_ to being sent to a remote LLM provider. This level of access gives us the ability to:
+
+1. Detect sensitive data in user messages (phone numbers, SSNs, email addresses, etc.)
+2. Swap each sensitive value for a generated placeholder and store the mapping in a registry
+3. Send only the masked messages to the LLM provider
+4. Restore the original values in the response before returning it to the user—or before calling downstream tools that need the real data
 
 Below is a diagram capturing the overall flow in a scenario where the LLM must leverage masked PII to invoke a verification tool.
 
@@ -34,6 +28,16 @@ Below is a diagram capturing the overall flow in a scenario where the LLM must l
 ## Implementation
 
 The complete code for this example is available in my [code-examples](https://github.com/johnsosoka/code-examples/tree/main/python/langchain-inference-masking) repository. This post aims to focus on the high level strategy and new LangChain framework offerings rather than the details of writing regex to identify a social security number :) 
+
+###  LangChain Middleware
+
+As part of the much anticipated 1.0 release, LangChain added [agent middleware](https://blog.langchain.com/agent-middleware/) which provides hooks into the framework which fire:
+
+* `before_model` - Executes implemented method prior to inference
+* `after_model` - Executes implemented method after inference
+* `modify_model_request` - Modifies the pending inference request.
+
+In practice, these hooks let you execute custom logic at the exact boundary where data crosses from your application into the LLM provider. This solution is only one small use case for the LLM engineering opportunities opened up by these new middleware hooks.
 
 ### Building the Middleware
 
@@ -111,7 +115,7 @@ The code which masks the fields (if identified) also registers the original sens
 
 **Note:** This is _after_ the LLM has been invoked, so the 3rd party has never been exposed to the sensitive information at this point.
 
-```
+```python
         # Call the model with masked messages
         response = handler(masked_request)
 
