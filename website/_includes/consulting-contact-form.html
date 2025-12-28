@@ -48,13 +48,40 @@
         <div class="form-group">
             <textarea class="form-control" id="msg" name="user_message" placeholder="Message (Required)"></textarea>
         </div>
-        <button type="button" class="btn btn-primary btn-block" id="contact_submit">Send your message</button>
+        <div class="form-group d-flex justify-content-center my-3">
+            <div class="cf-turnstile"
+                 data-sitekey="{{ site.turnstile.site_key }}"
+                 data-callback="onTurnstileSuccess"
+                 data-expired-callback="onTurnstileExpired"
+                 data-error-callback="onTurnstileError"
+                 data-theme="light">
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="contact_submit" disabled>Send your message</button>
     </form>
 </div>
 
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <script>
+    var turnstileToken = null;
+
+    function onTurnstileSuccess(token) {
+        turnstileToken = token;
+        $('#contact_submit').prop('disabled', false);
+    }
+
+    function onTurnstileExpired() {
+        turnstileToken = null;
+        $('#contact_submit').prop('disabled', true);
+    }
+
+    function onTurnstileError() {
+        turnstileToken = null;
+        $('#contact_submit').prop('disabled', true);
+    }
+
     function submitContact(payload) {
         $.ajax({
             url : "{{ site.contact.api.url }}",
@@ -63,12 +90,17 @@
             data: payload,
             success: function(data){
                 console.log(data);
-                $('#notification').addClass('alert-success').text('Message Sent!').show();
+                $('#notification').removeClass('alert-danger').addClass('alert-success').text('Message Sent!').show();
                 clearForm();
+                if (typeof turnstile !== 'undefined') {
+                    turnstile.reset();
+                }
+                turnstileToken = null;
+                $('#contact_submit').prop('disabled', true);
             },
             error: function(){
                 console.log("Error in the request");
-                $('#notification').addClass('alert-danger').text('Something went wrong :(').show();
+                $('#notification').removeClass('alert-success').addClass('alert-danger').text('Something went wrong :(').show();
             }
         });
     }
@@ -88,13 +120,20 @@
             company_name : $('#company').val(),
             industry : $('#industry').val(),
             contact_message : $('#msg').val(),
-            consulting_contact: true
+            consulting_contact: true,
+            turnstile_token: turnstileToken,
+            turnstile_site: "johnsosoka.com"
         };
 
         return JSON.stringify(contactMePayload);
     }
 
     $('#contact_submit').click(function() {
+        if (!turnstileToken) {
+            $('#notification').removeClass('alert-success').addClass('alert-danger')
+                .text('Please complete the security verification').show();
+            return;
+        }
         var payload = buildPayload();
         console.log(payload);
         submitContact(payload);
