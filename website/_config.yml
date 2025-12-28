@@ -73,3 +73,7 @@ newsletter:
     enabled: false
     title: "Newsletter"
     description: "Get random updates...maybe"
+
+# Turnstile CAPTCHA
+turnstile:
+  site_key: "0x4AAAAAACJYzpKhR6I8hqoX"
