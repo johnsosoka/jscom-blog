@@ -31,7 +31,7 @@ jobs:
         run: |
           cd website
           bundle install
-          bundle exec jekyll build
+          JEKYLL_ENV=production bundle exec jekyll build
           cd ..
 
       - name: Configure AWS credentials

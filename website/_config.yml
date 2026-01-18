@@ -77,3 +77,6 @@ newsletter:
 # Turnstile CAPTCHA
 turnstile:
   site_key: "0x4AAAAAACJYzpKhR6I8hqoX"
+
+# Google Analytics
+google_analytics: "G-R9BWET82TX"
