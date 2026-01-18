@@ -24,14 +24,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.7
+          ruby-version: 3.3
           bundler-cache: true
 
       - name: Build site
         run: |
           cd website
           bundle install
-          bundle exec jekyll build
+          JEKYLL_ENV=production bundle exec jekyll build
           cd ..
 
       - name: Configure AWS credentials

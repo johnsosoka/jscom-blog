@@ -11,6 +11,6 @@ gem "base64"
 
 group :jekyll_plugins do
   # jscom theme
-  gem "jscom_ice", '~> 1.3.0'
+  gem "jscom_ice", "~> 1.4.1"
 
 end
