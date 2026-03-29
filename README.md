@@ -1,5 +1,7 @@
 # jscom-blog
 
+> **ARCHIVED** — This repository has been migrated to the Sosoka-Labs organization. The website content and CI/CD now live in [Sosoka-Labs/johnsosoka-com](https://github.com/Sosoka-Labs/johnsosoka-com) (private). Infrastructure is managed by [sosoka-labs-infra](https://github.com/Sosoka-Labs/sosoka-labs-infra). The Jekyll theme ([jscom-ice](https://github.com/johnsosoka/jscom-ice)) remains its own repo.
+
 Welcome to the repository for [My Homepage](https://johnsosoka.com). A personal blog, written by a software engineer
 and lover-of-dogs currently living in Boise, Idaho. Writing about technology, software engineering, and my expanding family.
 
